@@ -37,24 +37,26 @@ AV.Cloud.define("updateMatchAndPlayerData", function(request, response) {
                     var scoreB = parseInt(match.scoreB);
                     var penaltyA = parseInt(match.penaltyA);
                     var penaltyB = parseInt(match.penaltyB);
-                    avMatch.scoreA = scoreA;
-                    avMatch.scoreB = scoreB;
-                    avMatch.penaltyA = penaltyA;
-                    avMatch.penaltyB = penaltyB;
-                    avMatch.teamAId = teamA.teamId;
-                    avMatch.teamBId = teamB.teamId;
+                    avMatch.set("scoreA",scoreA);
+                    avMatch.set("scoreB",scoreB);
+                    avMatch.set("penaltyA",penaltyA);
+                    avMatch.set('penaltyA', penaltyA);
+                    avMatch.set('penaltyB', penaltyB);
+                    avMatch.set('teamAId' , teamA.teamId);
+                    avMatch.set('teamBId' , teamB.teamId);
                     avMatch.isStart = 2;
                     avMatch.matchProperty = parseInt(match.matchProperty);
                     avMatch.competitionId = match.competitionId;
-                    avMatch.hint = hint;
+                    avMatch.hint = match.hint;
                     avMatch.date = string2Date(match.date);
                     avMatch.save();
+
                     // 更新team
                     if (avMatch.matchProperty == 0) {
-                        teamA.groupGoalCount += parseInt(match.teamA.groupGoalCount);
-                        teamB.groupGoalCount += parseInt(match.teamB.groupGoalCount);
-                        teamA.groupMissCount += parseInt(match.teamB.groupGoalCount);
-                        teamB.groupMissCount += parseInt(match.teamA.groupGoalCount);
+                        teamA.groupGoalCount += scoreA;
+                        teamB.groupGoalCount += scoreB;
+                        teamA.groupMissCount += scoreB;
+                        teamB.groupMissCount += scoreA;
                         if (scoreA > scoreB) {
                             teamA.groupWinCount += 1;
                             teamB.groupLostCount += 1;
@@ -90,11 +92,10 @@ AV.Cloud.define("updateMatchAndPlayerData", function(request, response) {
                         }
                     }
 
-                    teamA.goalCount += parseInt(match.teamA.groupGoalCount);
-                    teamB.goalCount += parseInt(match.teamB.groupGoalCount);
-                    teamA.missCount += parseInt(match.teamB.groupGoalCount);
-                    teamB.missCount += parseInt(match.teamA.groupGoalCount);
-
+                    teamA.goalCount += scoreA;
+                    teamB.goalCount += scoreB;
+                    teamA.missCount += scoreB;
+                    teamB.missCount += scoreA;
                     teamA.save();
                     teamB.save();
 
@@ -148,7 +149,7 @@ AV.Cloud.define("updateMatchAndPlayerData", function(request, response) {
 ///    var s = "2005-12-15  09:41:30";
 
 function string2Date(formatString) {
-    return new Date(Date.parse(s.replace(/-/g, "/")));
+    return new Date(Date.parse(formatString.replace(/-/g, "/")));
 }
 
 
@@ -156,7 +157,7 @@ function string2Date(formatString) {
  *  比赛性质 0:小组赛  1:决赛 2:半决赛 4:1/4 8:1/8 16:1/16 32:1/32 100：附加赛
  */
 function getWinRankWithMatchProperty(matchProperty) {
-    if (matchProperty == 100)
+    if (matchProperty ==100)
         return 0;
     return matchProperty;
 }
