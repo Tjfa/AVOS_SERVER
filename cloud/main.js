@@ -39,96 +39,89 @@ AV.Cloud.define("updateMatchAndPlayerData", function(request, response) {
                     }
                     teamB = results[0];
 
+
+
+
+                    match = {
+                        scoreA: parseInt(match.scoreA),
+                        scoreB: parseInt(match.scoreB),
+                        penaltyA: parseInt(match.penaltyA),
+                        penaltyB: parseInt(match.penaltyB),
+                        teamAName: match.teamAName,
+                        teamBName: match.teamBName,
+                        competitionId: parseInt(match.competitionId),
+                        isStart: 2,
+                        hint: match.hint,
+                        matchProperty: parseInt(match.matchProperty),
+                        date: string2Date(match.date),
+                        teamAId: teamA.get("teamId"),
+                        teamBId: teamB.get("teamBId"),
+                        teamAName: teamA.name,
+                        teamBName: teamB.name,
+                    }
+
                     // 更新match
                     var avMatch = new Match();
-                    var scoreA = parseInt(match.scoreA);
-                    var scoreB = parseInt(match.scoreB);
-                    var penaltyA = parseInt(match.penaltyA);
-                    var penaltyB = parseInt(match.penaltyB);
-                    var competitionId = parseInt(match.competitionId);
+                    addMatchWithJsonMatch(avMatch, match);
 
-                    avMatch.set("scoreA", scoreA);
-                    avMatch.set("scoreB", scoreB);
-                    avMatch.set("penaltyA", penaltyA);
-                    avMatch.set('penaltyA', penaltyA);
-                    avMatch.set('penaltyB', penaltyB);
-                    avMatch.set('teamAId', teamA.get('teamId'));
-                    avMatch.set('teamBId', teamB.get('teamId'));
-                    avMatch.set('isStart', 2);
-                    avMatch.set('matchProperty', parseInt(match.matchProperty));
-                    avMatch.set('competitionId', competitionId);
-                    avMatch.set('hint', match.hint);
-                    avMatch.set('date', string2Date(match.date));
-                    avMatch.save();
+                    updateTeamWithMatch(match, teamA, teamB);
 
-                    // 更新team
-                    if (parseInt(match.matchProperty) == 0) {
-                        teamA.set('groupGoalCount', teamA.get('groupGoalCount') + scoreA);
-                        teamB.set('groupGoalCount', teamB.get('groupGoalCount') + scoreB);
-                        teamA.set('groupMissCount', teamA.get('groupMissCount') + scoreB);
-                        teamB.set('groupMissCount', teamB.get('groupMissCount') + scoreA);
-                        if (scoreA > scoreB) {
-                            teamA.increment('groupWinCount');
-                            teamB.increment('groupLostCount');
-                            teamA.increment('winCount');
-                            teamB.increment('lostCount');
-                            teamA.set('score', teamA.get('score') + 3);
+                    var teamAPlayerQuery = new AV.Query("Player");
+                    teamAPlayerQuery.equalTo("competitionId", match.competitionId);
+                    teamAPlayerQuery.equalTo("name", match.teamAName);
 
-                        } else if (scoreA == scoreB) {
-                            teamA.increment('groupDrawCount');
-                            teamB.increment('groupDrawCount');
-                            teamA.increment('score');
-                            teamB.increment('score');
+                    var teamBPlayerQuery = new AV.Query("Player");
+                    teamBPlayerQuery.equalTo("competitionId", match.competitionId);
+                    teamBPlayerQuery.equalTo("name", match.teamBName);
 
-                        } else {
-                            teamA.increment('groupLostCount');
-                            teamA.increment('lostCount');
-                            teamB.increment('groupWinCount');
-                            teamB.increment('winCount');
-                            teamB.set('score', teamB.get('score') + 3);
+                    var playersQuery = new AV.Query.or(teamAPlayerQuery, teamBPlayerQuery);
+
+                    playersQuery.find({
+                        success: function(results) {
+                            var players = request.params.players;
+                            for (var index in players) {
+                                var player = players[index];
+
+
+                                player = {
+                                    name: player.name,
+                                    yellowCard: parseInt(player.yellowCard),
+                                    redCard: parseInt(player.redCard),
+                                    goalCount: parseInt(player.goalCount),
+                                    competitionId: match.competitionId,
+                                }
+
+                                if (player.team == teamA.get('name')) {
+                                    player.teamId = teamA.get('teamId');
+                                } else player.teamId = teamB.get('teamId');
+
+
+                                var avPlayer = null;
+                                for (var i = 0; i < results.length; i++) {
+                                    var resultPlayer = results[i];
+                                    var resultTeamId = resultPlayer.get("teamId");
+                                    if (resultPlayer.get("name") == player.name && player.teamId == resultTeamId) {
+                                        avPlayer = resultPlayer;
+                                        break;
+                                    }
+                                }
+                                if (avPlayer == null) {
+                                    avPlayer = new Player();
+                                    initPlayer(avPlayer);
+                                }
+                                updatePlayerWithJsonPlayer(avPlayer, player);
+
+                            }
+
+                            var responseObject = {
+                                success: "success"
+                            };
+                            response.success(responseObject);
+                        },
+                        error: function() {
+                            response.error("未知错误");
                         }
-                        teamA.set('rank', 0);
-                        teamB.set('rank', 0);
-
-
-                    } else { //不是小组赛 需要更新rank
-                        if (scoreA > scoreB || penaltyA > penaltyB) {
-                            teamA.increment('winCount');
-                            teamB.increment('lostCount');
-                            teamA.set('rank', getWinRankWithMatchProperty(avMatch.matchProperty));
-                            teamB.set('rank', getLostRankWithMatchProperty(avMatch.matchProperty));
-
-                        } else {
-                            teamA.increment('lostCount');
-                            teamB.increment('winCount');
-                            teamA.set('rank', getLostRankWithMatchProperty(avMatch.matchProperty));
-                            teamB.set('rank', getWinRankWithMatchProperty(avMatch.matchProperty))
-                        }
-                    }
-
-                    teamA.set('goalCount', teamA.get('goalCount') + scoreA);
-                    teamB.set('goalCount', teamB.get('goalCount') + scoreB);
-                    teamA.set('missCount', teamA.get('missCount') + scoreB);
-                    teamB.set('missCount', teamB.get('missCount') + scoreA);
-                    teamA.save();
-                    teamB.save();
-
-                    var players = request.params.players;
-
-                    for (var index in players) {
-                        var player = players[index];
-                        var teamId;
-                        if (player.team == teamA.get('name')) {
-                            teamId = teamA.get('teamId');
-                        } else teamId = teamB.get('teamId');
-
-                        updatePlayer(player, teamId, competitionId);
-                    }
-
-                    var responseObject = {
-                        success: "success"
-                    };
-                    response.success(responseObject);
+                    });
                 },
                 error: function() {
                     response.error(match.teamBName + "没有找到");
@@ -143,35 +136,93 @@ AV.Cloud.define("updateMatchAndPlayerData", function(request, response) {
     });
 });
 
-function updatePlayer(player, teamId, competitionId, callback) {
-    var queryPlayer = new AV.Query("Player");
-    queryPlayer.equalTo("name", player.name);
-    queryPlayer.equalTo("teamId", teamId);
-    queryPlayer.equalTo("competitionId", competitionId);
 
+function addMatchWithJsonMatch(avMatch, match) {
 
-    queryPlayer.limit = 1;
-    queryPlayer.find({
-        success: function(results) {
-            var avPlayer;
-            if (results.length == 0) {
-                avPlayer = new Player();
-                initPlayer(avPlayer);
-            } else avPlayer = results[0];
-            avPlayer.set('name', player.name);
-            avPlayer.set('goalCount', avPlayer.get('goalCount') + parseInt(player.goalCount));
-            avPlayer.set('yellowCard', avPlayer.get('yellowCard') + parseInt(player.yellowCard));
-            avPlayer.set('redCard', avPlayer.get('redCard') + parseInt(player.redCard));
-            avPlayer.set('teamId', teamId);
-            avPlayer.set('competitionId', competitionId);
-            avPlayer.save();
-            if (callback) {
-                callback();
-            }
+    avMatch.set("scoreA", match.scoreA);
+    avMatch.set("scoreB", match.scoreB);
+    avMatch.set('penaltyA', match.penaltyA);
+    avMatch.set('penaltyB', match.penaltyB);
+    avMatch.set('teamAId', match.teamAId);
+    avMatch.set('teamBId', match.teamBId);
+    avMatch.set('isStart', match.isStart);
+    avMatch.set('matchProperty', match.matchProperty);
+    avMatch.set('competitionId', match.competitionId);
+    avMatch.set('hint', match.hint);
+    avMatch.set('date', match.date);
+    avMatch.save();
+}
 
+function updateTeamWithMatch(match, teamA, teamB) {
+    // 更新team
+    var scoreA = match.scoreA;
+    var scoreB = match.scoreB;
+    var penaltyA = match.penaltyA;
+    var penaltyB = match.penaltyB;
+
+    if (match.matchProperty == 0) {
+        teamA.set('groupGoalCount', teamA.get('groupGoalCount') + scoreA);
+        teamB.set('groupGoalCount', teamB.get('groupGoalCount') + scoreB);
+        teamA.set('groupMissCount', teamA.get('groupMissCount') + scoreB);
+        teamB.set('groupMissCount', teamB.get('groupMissCount') + scoreA);
+        if (scoreA > scoreB) {
+            teamA.increment('groupWinCount');
+            teamB.increment('groupLostCount');
+            teamA.increment('winCount');
+            teamB.increment('lostCount');
+            teamA.set('score', teamA.get('score') + 3);
+
+        } else if (scoreA == scoreB) {
+            teamA.increment('groupDrawCount');
+            teamB.increment('groupDrawCount');
+            teamA.increment('score');
+            teamB.increment('score');
+
+        } else {
+            teamA.increment('groupLostCount');
+            teamA.increment('lostCount');
+            teamB.increment('groupWinCount');
+            teamB.increment('winCount');
+            teamB.set('score', teamB.get('score') + 3);
         }
-    });
+        teamA.set('rank', 0);
+        teamB.set('rank', 0);
 
+
+    } else { //不是小组赛 需要更新rank
+        if (scoreA > scoreB || penaltyA > penaltyB) {
+            teamA.increment('winCount');
+            teamB.increment('lostCount');
+            teamA.set('rank', getWinRankWithMatchProperty(avMatch.matchProperty));
+            teamB.set('rank', getLostRankWithMatchProperty(avMatch.matchProperty));
+
+        } else {
+            teamA.increment('lostCount');
+            teamB.increment('winCount');
+            teamA.set('rank', getLostRankWithMatchProperty(avMatch.matchProperty));
+            teamB.set('rank', getWinRankWithMatchProperty(avMatch.matchProperty))
+        }
+
+    }
+
+    teamA.set('penaltyA', penaltyA);
+    teamB.set('penaltyB', penaltyB);
+    teamA.set('goalCount', teamA.get('goalCount') + scoreA);
+    teamB.set('goalCount', teamB.get('goalCount') + scoreB);
+    teamA.set('missCount', teamA.get('missCount') + scoreB);
+    teamB.set('missCount', teamB.get('missCount') + scoreA);
+    teamA.save();
+    teamB.save();
+}
+
+function updatePlayerWithJsonPlayer(avPlayer, player) {
+    avPlayer.set('name', player.name);
+    avPlayer.set('goalCount', avPlayer.get('goalCount') + player.goalCount);
+    avPlayer.set('yellowCard', avPlayer.get('yellowCard') + player.yellowCard);
+    avPlayer.set('redCard', avPlayer.get('redCard') + player.redCard);
+    avPlayer.set('teamId', player.teamId);
+    avPlayer.set('competitionId', player.competitionId);
+    avPlayer.save();
 }
 
 function initPlayer(avPlayer) {
