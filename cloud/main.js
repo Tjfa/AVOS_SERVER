@@ -31,17 +31,12 @@ AV.Cloud.define("updateMatchAndPlayerData", function(request, response) {
             queryB.limit = 1;
 
             queryB.find({
-
                 success: function(results) {
                     if (results.length == 0) {
                         response.error(match.teamBName + "没有找到");
                         return;
                     }
                     teamB = results[0];
-
-
-
-
                     match = {
                         scoreA: parseInt(match.scoreA),
                         scoreB: parseInt(match.scoreB),
