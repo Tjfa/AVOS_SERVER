@@ -15,12 +15,13 @@ AV.Cloud.define("updateMatchAndPlayerData", function(request, response) {
     var match = request.params.match;
     var queryA = new AV.Query("Team");
     queryA.equalTo("name", match.teamAName);
+    console.log(match.teamAName);
     queryA.equalTo("competitionId", parseInt(match.competitionId));
     queryA.limit = 1;
     queryA.find({
         success: function(results) {
             if (results.length == 0) {
-                response.error(match.teamAName + "没有找到");
+                response.success(match.teamAName + "没有找到");
                 return;
             }
             teamA = results[0];
@@ -33,7 +34,7 @@ AV.Cloud.define("updateMatchAndPlayerData", function(request, response) {
             queryB.find({
                 success: function(results) {
                     if (results.length == 0) {
-                        response.error(match.teamBName + "没有找到");
+                        response.success(match.teamBName + "没有找到");
                         return;
                     }
                     teamB = results[0];
@@ -50,9 +51,10 @@ AV.Cloud.define("updateMatchAndPlayerData", function(request, response) {
                         matchProperty: parseInt(match.matchProperty),
                         date: string2Date(match.date),
                         teamAId: teamA.get("teamId"),
-                        teamBId: teamB.get("teamBId"),
+                        teamBId: teamB.get("teamId"),
                         teamAName: teamA.name,
                         teamBName: teamB.name,
+                        referee: match.referee,
                     }
 
                     // 更新match
@@ -84,12 +86,12 @@ AV.Cloud.define("updateMatchAndPlayerData", function(request, response) {
                                     redCard: parseInt(player.redCard),
                                     goalCount: parseInt(player.goalCount),
                                     competitionId: match.competitionId,
+                                    team: player.team,
                                 }
 
                                 if (player.team == teamA.get('name')) {
                                     player.teamId = teamA.get('teamId');
                                 } else player.teamId = teamB.get('teamId');
-
 
                                 var avPlayer = null;
                                 for (var i = 0; i < results.length; i++) {
@@ -114,19 +116,18 @@ AV.Cloud.define("updateMatchAndPlayerData", function(request, response) {
                             response.success(responseObject);
                         },
                         error: function() {
-                            response.error("未知错误");
+                            response.success("未知错误,请及时联系我(mailqiufeng@gmail.com 或者 18817367675) 速度联系");
                         }
                     });
                 },
                 error: function() {
-                    response.error(match.teamBName + "没有找到");
+                    response.success(match.teamBName + "没有找到");
                 },
             })
 
         },
         error: function() {
-
-            response.error(match.teamAName + "没有找到");
+            response.success(match.teamAName + "没有找到");
         },
     });
 });
@@ -145,6 +146,7 @@ function addMatchWithJsonMatch(avMatch, match) {
     avMatch.set('competitionId', match.competitionId);
     avMatch.set('hint', match.hint);
     avMatch.set('date', match.date);
+    avMatch.set('referee', match.referee);
     avMatch.save();
 }
 
