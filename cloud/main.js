@@ -202,8 +202,7 @@ function updateTeamWithMatch(match, teamA, teamB) {
 
     }
 
-    teamA.set('penaltyA', penaltyA);
-    teamB.set('penaltyB', penaltyB);
+
     teamA.set('goalCount', teamA.get('goalCount') + scoreA);
     teamB.set('goalCount', teamB.get('goalCount') + scoreB);
     teamA.set('missCount', teamA.get('missCount') + scoreB);
