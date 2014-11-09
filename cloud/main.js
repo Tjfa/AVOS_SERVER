@@ -190,14 +190,14 @@ function updateTeamWithMatch(match, teamA, teamB) {
         if (scoreA > scoreB || penaltyA > penaltyB) {
             teamA.increment('winCount');
             teamB.increment('lostCount');
-            teamA.set('rank', getWinRankWithMatchProperty(avMatch.matchProperty));
-            teamB.set('rank', getLostRankWithMatchProperty(avMatch.matchProperty));
+            teamA.set('rank', getWinRankWithMatchProperty(match.matchProperty));
+            teamB.set('rank', getLostRankWithMatchProperty(match.matchProperty));
 
         } else {
             teamA.increment('lostCount');
             teamB.increment('winCount');
-            teamA.set('rank', getLostRankWithMatchProperty(avMatch.matchProperty));
-            teamB.set('rank', getWinRankWithMatchProperty(avMatch.matchProperty))
+            teamA.set('rank', getLostRankWithMatchProperty(match.matchProperty));
+            teamB.set('rank', getWinRankWithMatchProperty(match.matchProperty))
         }
 
     }
