@@ -3,25 +3,37 @@ var Match = AV.Object.extend("Match");
 var Player = AV.Object.extend("Player");
 var Team = AV.Object.extend("Team");
 
+var allowCrossDomain = function(req, res, next) {
+    request.header('Access-Control-Allow-Origin', 'http://localhost:8000/');
+    request.header('Access-Control-Allow-Credentials', true);
+    request.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+    request.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+};
+
 AV.Cloud.define("hello", function(request, response) {
-    console.log("hello");
     response.success("success");
 });
 
 AV.Cloud.define("updateMatchAndPlayerData", function(request, response) {
-    console.log("fucntion : updateMatchAndPlayerData");
+
     var teamA;
     var teamB;
     var match = request.params.match;
     var queryA = new AV.Query("Team");
+
+
+    console.log("fucntion : updateMatchAndPlayerData");
+    console.log("teamA:" + match.teamAName);
+    console.log("teamB:" + match.teamBName);
+
     queryA.equalTo("name", match.teamAName);
-    console.log(match.teamAName);
     queryA.equalTo("competitionId", parseInt(match.competitionId));
     queryA.limit = 1;
     queryA.find({
         success: function(results) {
             if (results.length == 0) {
-                response.success(match.teamAName + "没有找到");
+                console.log("leave function : updateMatchAndPlayerData");
+                errorResponse(response, match.teamAName + "没有找到");
                 return;
             }
             teamA = results[0];
@@ -34,33 +46,16 @@ AV.Cloud.define("updateMatchAndPlayerData", function(request, response) {
             queryB.find({
                 success: function(results) {
                     if (results.length == 0) {
-                        response.success(match.teamBName + "没有找到");
+                        errorResponse(response, match.teamBName + "没有找到");
                         return;
                     }
                     teamB = results[0];
-                    match = {
-                        scoreA: parseInt(match.scoreA),
-                        scoreB: parseInt(match.scoreB),
-                        penaltyA: parseInt(match.penaltyA),
-                        penaltyB: parseInt(match.penaltyB),
-                        teamAName: match.teamAName,
-                        teamBName: match.teamBName,
-                        competitionId: parseInt(match.competitionId),
-                        isStart: 2,
-                        hint: match.hint,
-                        matchProperty: parseInt(match.matchProperty),
-                        date: string2Date(match.date),
-                        teamAId: teamA.get("teamId"),
-                        teamBId: teamB.get("teamId"),
-                        teamAName: teamA.name,
-                        teamBName: teamB.name,
-                        referee: match.referee,
-                    }
+
+                    match = generalJsonMatch(match, teamA, teamB);
 
                     // 更新match
                     var avMatch = new Match();
                     addMatchWithJsonMatch(avMatch, match);
-
                     updateTeamWithMatch(match, teamA, teamB);
 
                     var teamAPlayerQuery = new AV.Query("Player");
@@ -79,19 +74,14 @@ AV.Cloud.define("updateMatchAndPlayerData", function(request, response) {
                             for (var index in players) {
                                 var player = players[index];
 
-
-                                player = {
-                                    name: player.name,
-                                    yellowCard: parseInt(player.yellowCard),
-                                    redCard: parseInt(player.redCard),
-                                    goalCount: parseInt(player.goalCount),
-                                    competitionId: match.competitionId,
-                                    team: player.team,
-                                }
+                                player = generalJsonPlayer(player, match.competitionId);
 
                                 if (player.team == teamA.get('name')) {
                                     player.teamId = teamA.get('teamId');
-                                } else player.teamId = teamB.get('teamId');
+                                } 
+                                else {
+                                    player.teamId = teamB.get('teamId'); 
+                                } 
 
                                 var avPlayer = null;
                                 for (var i = 0; i < results.length; i++) {
@@ -103,38 +93,84 @@ AV.Cloud.define("updateMatchAndPlayerData", function(request, response) {
                                     }
                                 }
                                 if (avPlayer == null) {
+                                    console.log("no found player", player.name);
                                     avPlayer = new Player();
                                     initPlayer(avPlayer);
                                 }
                                 updatePlayerWithJsonPlayer(avPlayer, player);
-
                             }
 
+
+                            console.log("success");
+                            console.log("leave function : updateMatchAndPlayerData");
                             var responseObject = {
                                 success: "success"
                             };
                             response.success(responseObject);
                         },
                         error: function() {
-                            response.success("未知错误,请及时联系我(mailqiufeng@gmail.com 或者 18817367675) 速度联系");
+                            console.log("leave function : updateMatchAndPlayerData");
+                            errorResponse(response, "未知错误,请及时联系我(mailqiufeng@gmail.com 或者 18817367675) 速度联系");
                         }
                     });
                 },
                 error: function() {
-                    response.success(match.teamBName + "没有找到");
+                    console.log("leave function : updateMatchAndPlayerData");
+                    errorResponse(response, match.teamBName + "没有找到");
                 },
             })
 
         },
         error: function() {
-            response.success(match.teamAName + "没有找到");
+            errorResponse(match.teamAName + "没有找到");
         },
     });
 });
 
+function errorResponse(response, msg) {
+    console.log(msg);
+    response.success(msg);
+}
+
+//客户端传入过来会都是string  所以需要数字化一下
+function generalJsonMatch(match, teamA, teamB) {
+    console.log("enter generalAVMatch");
+    var match = {
+            scoreA: parseInt(match.scoreA),
+            scoreB: parseInt(match.scoreB),
+            penaltyA: parseInt(match.penaltyA),
+            penaltyB: parseInt(match.penaltyB),
+            teamAName: match.teamAName,
+            teamBName: match.teamBName,
+            competitionId: parseInt(match.competitionId),
+            isStart: 2,
+            hint: match.hint,
+            matchProperty: parseInt(match.matchProperty),
+            date: string2Date(match.date),
+            teamAId: teamA.get("teamId"),
+            teamBId: teamB.get("teamId"),
+            teamAName: teamA.name,
+            teamBName: teamB.name,
+            referee: match.referee,
+        }
+    return match;
+}
+
+function generalJsonPlayer(player, competitionId) {
+    console.log("general AV Player");
+    var newPlayer = {
+            name: player.name,
+            yellowCard: parseInt(player.yellowCard),
+            redCard: parseInt(player.redCard),
+            goalCount: parseInt(player.goalCount),
+            competitionId: competitionId,
+            team: player.team,
+    }
+    return newPlayer;
+}
 
 function addMatchWithJsonMatch(avMatch, match) {
-
+    console.log("add match");
     avMatch.set("scoreA", match.scoreA);
     avMatch.set("scoreB", match.scoreB);
     avMatch.set('penaltyA', match.penaltyA);
@@ -169,13 +205,15 @@ function updateTeamWithMatch(match, teamA, teamB) {
             teamB.increment('lostCount');
             teamA.set('score', teamA.get('score') + 3);
 
-        } else if (scoreA == scoreB) {
+        }
+        else if (scoreA == scoreB) {
             teamA.increment('groupDrawCount');
             teamB.increment('groupDrawCount');
             teamA.increment('score');
             teamB.increment('score');
 
-        } else {
+        } 
+        else {
             teamA.increment('groupLostCount');
             teamA.increment('lostCount');
             teamB.increment('groupWinCount');
@@ -184,9 +222,8 @@ function updateTeamWithMatch(match, teamA, teamB) {
         }
         teamA.set('rank', 0);
         teamB.set('rank', 0);
-
-
-    } else { //不是小组赛 需要更新rank
+    } 
+    else { //不是小组赛 需要更新rank
         if (scoreA > scoreB || penaltyA > penaltyB) {
             teamA.increment('winCount');
             teamB.increment('lostCount');
@@ -202,16 +239,19 @@ function updateTeamWithMatch(match, teamA, teamB) {
 
     }
 
-
     teamA.set('goalCount', teamA.get('goalCount') + scoreA);
     teamB.set('goalCount', teamB.get('goalCount') + scoreB);
     teamA.set('missCount', teamA.get('missCount') + scoreB);
     teamB.set('missCount', teamB.get('missCount') + scoreA);
+
+    console.log("save A:" + teamA.get("name"));
+    console.log("save B:" + teamB.get("name"));
     teamA.save();
     teamB.save();
 }
 
 function updatePlayerWithJsonPlayer(avPlayer, player) {
+    console.log("update player" + player.name);
     avPlayer.set('name', player.name);
     avPlayer.set('goalCount', avPlayer.get('goalCount') + player.goalCount);
     avPlayer.set('yellowCard', avPlayer.get('yellowCard') + player.yellowCard);
