@@ -67,7 +67,7 @@ AV.Cloud.define("updateMatchAndPlayerData", function(request, response) {
                     teamBPlayerQuery.equalTo("name", match.teamBName);
 
                     var playersQuery = new AV.Query.or(teamAPlayerQuery, teamBPlayerQuery);
-
+                    playersQuery.limit = 1000;
                     playersQuery.find({
                         success: function(results) {
                             var players = request.params.players;
