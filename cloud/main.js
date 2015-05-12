@@ -2,17 +2,7 @@ var Competition = AV.Object.extend("Competition");
 var Match = AV.Object.extend("Match");
 var Player = AV.Object.extend("Player");
 var Team = AV.Object.extend("Team");
-
-var allowCrossDomain = function(req, res, next) {
-    request.header('Access-Control-Allow-Origin', 'http://localhost:8000/');
-    request.header('Access-Control-Allow-Credentials', true);
-    request.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
-    request.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-};
-
-AV.Cloud.define("hello", function(request, response) {
-    response.success("success");
-});
+var PromoCode = AV.Object.extend("PromoCode");
 
 AV.Cloud.define("updateMatchAndPlayerData", function(request, response) {
 
@@ -60,16 +50,26 @@ AV.Cloud.define("updateMatchAndPlayerData", function(request, response) {
 
                     var teamAPlayerQuery = new AV.Query("Player");
                     teamAPlayerQuery.equalTo("competitionId", match.competitionId);
-                    teamAPlayerQuery.equalTo("name", match.teamAName);
+                    teamAPlayerQuery.equalTo("teamId", match.teamAId);
 
                     var teamBPlayerQuery = new AV.Query("Player");
                     teamBPlayerQuery.equalTo("competitionId", match.competitionId);
-                    teamBPlayerQuery.equalTo("name", match.teamBName);
+                    teamBPlayerQuery.equalTo("teamId", match.teamBId);
 
                     var playersQuery = new AV.Query.or(teamAPlayerQuery, teamBPlayerQuery);
                     playersQuery.limit = 1000;
                     playersQuery.find({
                         success: function(results) {
+
+                            console.log("find Player Count" + results.length);
+                            console.log("find Player Name:")
+                            for (var i = 0; i < results.length; i++) {
+                                var resultPlayer = results[i];
+                                console.log(resultPlayer.get("name"));
+                            }
+                            console.log("find Player name end");
+
+
                             var players = request.params.players;
                             for (var index in players) {
                                 var player = players[index];
@@ -84,6 +84,7 @@ AV.Cloud.define("updateMatchAndPlayerData", function(request, response) {
                                 } 
 
                                 var avPlayer = null;
+
                                 for (var i = 0; i < results.length; i++) {
                                     var resultPlayer = results[i];
                                     var resultTeamId = resultPlayer.get("teamId");
@@ -305,3 +306,89 @@ function getLostRankWithMatchProperty(matchProperty) {
             return 0;
     }
 }
+
+
+
+/////////login 
+
+var jschars = ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
+function generateMixed(n) {
+    var res = "";
+    for(var i = 0; i < n ; i ++) {
+        var id = Math.ceil(Math.random()*35);
+        res += jschars[id];
+    }
+    return res;
+}
+
+///PromoCode 可能会重复 但是 这个没有关系
+AV.Cloud.define("isAvailablePromoCode", function(request, response) {
+    console.log("function: isAvailablePromoCode");
+    var queryDate = new Date();
+    queryDate.setTime(queryDate.getTime() - 1800 * 1000);
+
+    var codeStr = request.params.codeStr;
+    var query = new AV.Query("PromoCode");
+    query.equalTo("codeStr",codeStr);
+    query.equalTo("isAvailable", true);
+    query.greaterThanOrEqualTo("createdAt", queryDate);
+    query.ascending("createdAt");
+
+    query.first({
+        success: function(object) {
+            console.log(object);
+            if (object == null) {
+                response.error("false");
+            }
+            else {
+                response.success("true");               
+            }
+         },
+        error: function(error) {
+            response.error("false");
+        }
+    });
+});
+
+AV.Cloud.define("usePromocode", function(request, response) {
+    console.log("function: usePromocode");
+
+    var queryDate = new Date();
+    queryDate.setTime(queryDate.getTime() - 1800 * 1000);
+
+    var codeStr = request.params.codeStr;
+    var query = new AV.Query("PromoCode");
+    query.equalTo("codeStr",codeStr);
+    query.equalTo("isAvailable", true);
+    query.greaterThanOrEqualTo("createdAt", queryDate);
+    query.ascending("createdAt");
+
+    query.first({
+        success: function(object) {
+            console.log(object);
+            if (object == null) {
+                response.error("promoCode not available");
+            }
+            else {
+                object.set("isAvailable", false);
+                object.save();
+                response.success("true");               
+            }
+         },
+        error: function(error) {
+            response.error("promoCode not available");
+        }
+    });
+});
+
+///生成的code 在半个小时以后失效
+AV.Cloud.define("getPromoCode", function(request, response) {
+    console.log("function: getPromoCode");
+    var code = generateMixed(6)
+
+    var promoCode = new PromoCode();
+    promoCode.set("isAvailable", true);
+    promoCode.set("codeStr", code);
+    promoCode.save();
+    response.success(code);
+});
