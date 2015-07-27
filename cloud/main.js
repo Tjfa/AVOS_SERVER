@@ -392,3 +392,29 @@ AV.Cloud.define("getPromoCode", function(request, response) {
     promoCode.save();
     response.success(code);
 });
+
+
+////删除competition
+
+AV.Cloud.define("deleteCompetition", function(request, response) {
+     console.log("function: deleteCompetition");
+     var objectId = request.params.objectId
+     console.log(objectId)
+     var query = new AV.Query("Competition")
+     query.get(objectId, {
+        success: function(competition) {
+            console.log(competition)
+            competition.destroy({
+                success: function (object) {
+                    response.success({"success":"success"})
+                },
+                error: function(object, error) {
+                    response.error(error)
+                }
+            })
+        },
+        error: function(object, error){
+            response.error(error)
+        }
+     })
+});
